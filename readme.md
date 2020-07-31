@@ -50,6 +50,11 @@ Clone the repository
 git clone https://github.com/nullgemm/ly.git
 ```
 
+cd into ly/
+```
+cd ly
+```
+
 Fetch submodules
 ```
 make github
