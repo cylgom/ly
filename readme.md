@@ -19,6 +19,8 @@ On Debian-based distros running `apt install build-essential libpam0g-dev libxcb
 
 ## Support
 The following desktop environments were tested with success
+ - Awesome
+ - herbstluftwm
  - budgie
  - cinnamon
  - deepin
