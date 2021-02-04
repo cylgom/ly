@@ -22,7 +22,8 @@ The following desktop environments were tested with success
  - budgie
  - cinnamon
  - deepin
- - enlightenment
+ - dwm
+ - enlightenment 
  - gnome
  - i3
  - kde
