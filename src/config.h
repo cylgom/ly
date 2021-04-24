@@ -70,6 +70,7 @@ struct config
 	u8 default_input;
 	u8 fg;
 	bool hide_borders;
+	bool hide_f1_commands;
 	u8 input_len;
 	char* lang;
 	bool load;

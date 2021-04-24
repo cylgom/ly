@@ -107,11 +107,7 @@ int main(int argc, char** argv)
 	}
 
 	config_load(config_path);
-
-	if (strcmp(config.lang, "en") != 0)
-	{
-		lang_load();
-	}
+	lang_load();
 
 	void* input_structs[3] =
 	{
@@ -177,7 +173,8 @@ int main(int argc, char** argv)
 				animate(&buf);
 				draw_box(&buf);
 				draw_labels(&buf);
-				draw_f_commands();
+				if(!config.hide_f1_commands)
+					draw_f_commands();
 				draw_lock_state(&buf);
 				position_input(&buf, &desktop, &login, &password);
 				draw_desktop(&desktop);

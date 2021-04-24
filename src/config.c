@@ -165,6 +165,7 @@ void config_load(const char *cfg_path)
 		{"default_input", &config.default_input, config_handle_u8},
 		{"fg", &config.fg, config_handle_u8},
 		{"hide_borders", &config.hide_borders, config_handle_bool},
+		{"hide_f1_commands", &config.hide_f1_commands, config_handle_bool},
 		{"input_len", &config.input_len, config_handle_u8},
 		{"lang", &config.lang, config_handle_str},
 		{"load", &config.load, config_handle_bool},
