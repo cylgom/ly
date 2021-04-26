@@ -456,7 +456,8 @@ void position_input(
 	struct text* password)
 {
 	u16 x = buf->box_x + config.margin_box_h + buf->labels_max_len + 1;
-	i32 len = buf->box_x + buf->box_width - config.margin_box_h - x;
+        i32 len = buf->box_x + buf->box_width - config.margin_box_h - x;
+        i32 len_password = config.asterisk_empty ? 0 : len;
 
 	if (len < 0)
 	{
@@ -473,7 +474,7 @@ void position_input(
 
 	password->x = x;
 	password->y = buf->box_y + config.margin_box_v + 6;
-	password->visible_len = len;
+        password->visible_len = len_password;
 }
 
 static void doom_init(struct term_buf* buf)

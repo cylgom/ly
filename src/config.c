@@ -158,6 +158,7 @@ void config_load(const char *cfg_path)
 		{"animate", &config.animate, config_handle_bool},
 		{"animation", &config.animation, config_handle_u8},
 		{"asterisk", &config.asterisk, config_handle_char},
+                {"asterisk_empty", &config.asterisk_empty, config_handle_bool},
 		{"bg", &config.bg, config_handle_u8},
 		{"blank_box", &config.blank_box, config_handle_bool},
 		{"blank_password", &config.blank_password, config_handle_bool},
@@ -264,6 +265,7 @@ void config_defaults()
 	config.animate = false;
 	config.animation = 0;
 	config.asterisk = '*';
+        config.asterisk_empty = false;
 	config.bg = 0;
 	config.blank_box = true;
 	config.blank_password = false;

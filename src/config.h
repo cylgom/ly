@@ -63,6 +63,7 @@ struct config
 	bool animate;
 	u8 animation;
 	char asterisk;
+        bool asterisk_empty;
 	u8 bg;
 	bool blank_box;
 	bool blank_password;
