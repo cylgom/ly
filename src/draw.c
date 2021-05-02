@@ -68,11 +68,22 @@ void draw_init(struct term_buf* buf)
 #endif
 }
 
+static void doom_free(struct term_buf* buf);
+static void matrix_free(struct term_buf* buf);
+
 void draw_free(struct term_buf* buf)
 {
 	if (config.animate)
 	{
-		free(buf->tmp_buf);
+		switch (config.animation)
+		{
+			case 0:
+				doom_free(buf);
+				break;
+			case 1:
+				matrix_free(buf);
+				break;
+		}
 	}
 }
 
@@ -480,18 +491,118 @@ static void doom_init(struct term_buf* buf)
 {
 	buf->init_width = buf->width;
 	buf->init_height = buf->height;
+	buf->astate.doom = malloc(sizeof(struct doom_state));
 
-	u16 tmp_len = buf->width * buf->height;
-	buf->tmp_buf = malloc(tmp_len);
-	tmp_len -= buf->width;
-
-	if (buf->tmp_buf == NULL)
+	if (buf->astate.doom == NULL)
 	{
 		dgn_throw(DGN_ALLOC);
 	}
 
-	memset(buf->tmp_buf, 0, tmp_len);
-	memset(buf->tmp_buf + tmp_len, DOOM_STEPS - 1, buf->width);
+	u16 tmp_len = buf->width * buf->height;
+	buf->astate.doom->buf = malloc(tmp_len);
+	tmp_len -= buf->width;
+
+	if (buf->astate.doom->buf == NULL)
+	{
+		dgn_throw(DGN_ALLOC);
+	}
+
+	memset(buf->astate.doom->buf, 0, tmp_len);
+	memset(buf->astate.doom->buf + tmp_len, DOOM_STEPS - 1, buf->width);
+}
+
+static void doom_free(struct term_buf* buf)
+{
+	free(buf->astate.doom->buf);
+	free(buf->astate.doom);
+}
+
+// Adapted from cmatrix
+static void matrix_init(struct term_buf* buf)
+{
+	buf->init_width = buf->width;
+	buf->init_height = buf->height;
+	buf->astate.matrix = malloc(sizeof(struct matrix_state));
+	struct matrix_state* s = buf->astate.matrix;
+
+	if (s == NULL)
+	{
+		dgn_throw(DGN_ALLOC);
+	}
+
+	u16 len = buf->height + 1;
+	s->grid = malloc(sizeof(struct matrix_dot*) * len);
+
+	if (s->grid == NULL)
+	{
+		dgn_throw(DGN_ALLOC);
+	}
+
+	len = (buf->height + 1) * buf->width;
+	(s->grid)[0] = malloc(sizeof(struct matrix_dot) * len);
+
+	if ((s->grid)[0] == NULL)
+	{
+		dgn_throw(DGN_ALLOC);
+	}
+
+	for (int i = 1; i <= buf->height; ++i)
+	{
+		s->grid[i] = s->grid[i - 1] + buf->width;
+
+		if (s->grid[i] == NULL)
+		{
+			dgn_throw(DGN_ALLOC);
+		}
+	}
+
+	s->length = malloc(buf->width * sizeof(int));
+
+	if (s->length == NULL)
+	{
+		dgn_throw(DGN_ALLOC);
+	}
+
+	s->spaces = malloc(buf->width * sizeof(int));
+
+	if (s->spaces == NULL)
+	{
+		dgn_throw(DGN_ALLOC);
+	}
+
+	s->updates = malloc(buf->width * sizeof(int));
+
+	if (s->updates == NULL)
+	{
+		dgn_throw(DGN_ALLOC);
+	}
+
+	// Initialize grid
+	for (int i = 0; i <= buf->height; ++i)
+	{
+		for (int j = 0; j <= buf->width - 1; j += 2)
+		{
+			s->grid[i][j].val = -1;
+		}
+	}
+
+	for (int j = 0; j < buf->width; j += 2)
+	{
+		s->spaces[j] = (int) rand() % buf->height + 1;
+		s->length[j] = (int) rand() % (buf->height - 3) + 3;
+		s->grid[1][j].val = ' ';
+		s->updates[j] = (int) rand() % 3 + 1;
+	}
+}
+
+static void matrix_free(struct term_buf* buf)
+{
+	free(buf->astate.matrix->grid[0]);
+	free(buf->astate.matrix->grid);
+	free(buf->astate.matrix->length);
+	free(buf->astate.matrix->spaces);
+	free(buf->astate.matrix->updates);
+	free(buf->astate.matrix);
 }
 
 void animate_init(struct term_buf* buf)
@@ -500,9 +611,14 @@ void animate_init(struct term_buf* buf)
 	{
 		switch(config.animation)
 		{
-			default:
+			case 0:
 			{
 				doom_init(buf);
+				break;
+			}
+			case 1:
+			{
+				matrix_init(buf);
 				break;
 			}
 		}
@@ -533,7 +649,7 @@ static void doom(struct term_buf* term_buf)
 	u16 dst;
 
 	u16 w = term_buf->init_width;
-	u8* tmp = term_buf->tmp_buf;
+	u8* tmp = term_buf->astate.doom->buf;
 
 	if ((term_buf->width != term_buf->init_width) || (term_buf->height != term_buf->init_height))
 	{
@@ -572,6 +688,130 @@ static void doom(struct term_buf* term_buf)
 	}
 }
 
+// Adapted from cmatrix
+static void matrix(struct term_buf* buf)
+{
+	static int frame = 3;
+	const int frame_delay = 8;
+	static int count = 0;
+	bool first_col;
+	struct matrix_state* s = buf->astate.matrix;
+
+	// Allowed codepoints
+	const int randmin = 33;
+	const int randnum = 123 - randmin;
+	// Chars change mid-scroll
+	const bool changes = true;
+
+	if ((buf->width != buf->init_width) || (buf->height != buf->init_height))
+	{
+		return;
+	}
+
+	count += 1;
+	if (count > frame_delay) {
+		frame += 1;
+		if (frame > 4) frame = 1;
+		count = 0;
+
+		for (int j = 0; j < buf->width; j += 2)
+		{
+			int tail;
+			if (frame > s->updates[j])
+			{
+				if (s->grid[0][j].val == -1 && s->grid[1][j].val == ' ')
+				{
+					if (s->spaces[j] > 0)
+					{
+						s->spaces[j]--;
+					} else {
+						s->length[j] = (int) rand() % (buf->height - 3) + 3;
+						s->grid[0][j].val = (int) rand() % randnum + randmin;
+						s->spaces[j] = (int) rand() % buf->height + 1;
+					}
+				}
+
+				int i = 0, seg_len = 0;
+				first_col = 1;
+				while (i <= buf->height)
+				{
+					// Skip over spaces
+					while (i <= buf->height
+							&& (s->grid[i][j].val == ' ' || s->grid[i][j].val == -1))
+					{
+						i++;
+					}
+
+					if (i > buf->height) break;
+
+					// Find the head of this col
+					tail = i;
+					seg_len = 0;
+					while (i <= buf->height
+							&& (s->grid[i][j].val != ' ' && s->grid[i][j].val != -1))
+					{
+						s->grid[i][j].is_head = false;
+						if (changes)
+						{
+							if (rand() % 8 == 0)
+								s->grid[i][j].val = (int) rand() % randnum + randmin;
+						}
+						i++;
+						seg_len++;
+					}
+
+					// Head's down offscreen
+					if (i > buf->height)
+					{
+						s->grid[tail][j].val = ' ';
+						continue;
+					}
+
+					s->grid[i][j].val = (int) rand() % randnum + randmin;
+					s->grid[i][j].is_head = true;
+
+					if (seg_len > s->length[j] || !first_col) {
+						s->grid[tail][j].val = ' ';
+						s->grid[0][j].val = -1;
+					}
+					first_col = 0;
+					i++;
+				}
+			}
+		}
+	}
+
+	u32 blank;
+	utf8_char_to_unicode(&blank, " ");
+
+	for (int j = 0; j < buf->width; j += 2) {
+		for (int i = 1; i <= buf->height; ++i)
+		{
+			u32 c;
+			int fg = TB_GREEN;
+			int bg = TB_DEFAULT;
+
+			if (s->grid[i][j].val == -1 || s->grid[i][j].val == ' ')
+			{
+				tb_change_cell(j, i - 1, blank, fg, bg);
+				continue;
+			}
+
+			char tmp[2];
+			tmp[0] = s->grid[i][j].val;
+			tmp[1] = '\0';
+			if(utf8_char_to_unicode(&c, tmp))
+			{
+				if (s->grid[i][j].is_head)
+				{
+					fg = TB_WHITE | TB_BOLD;
+				}
+				tb_change_cell(j, i - 1, c, fg, bg);
+			}
+		}
+	}
+}
+
 void animate(struct term_buf* buf)
 {
 	buf->width = tb_width();
@@ -581,9 +821,14 @@ void animate(struct term_buf* buf)
 	{
 		switch(config.animation)
 		{
-			default:
+			case 0:
 			{
 				doom(buf);
+				break;
+			}
+			case 1:
+			{
+				matrix(buf);
 				break;
 			}
 		}
