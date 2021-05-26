@@ -40,10 +40,10 @@ case $SHELL in
     ;;
   */fish)
     [ -f /etc/profile ] && . /etc/profile
-    xsess_tmp=`mktemp /tmp/xsess-env-XXXXXX`
+    wlsess_tmp=`mktemp /tmp/wlsess-env-XXXXXX`
     $SHELL --login -c "/bin/sh -c 'export -p' > $xsess_tmp"
-    . $xsess_tmp
-    rm -f $xsess_tmp
+    . $wlsess_tmp
+    rm -f $wlsess_tmp
     ;;
   *) # Plain sh, ksh, and anything we do not know.
     [ -f /etc/profile ] && . /etc/profile
